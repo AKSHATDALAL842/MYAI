@@ -1,20 +1,14 @@
 "use client";
-import { Box, Button, Stack, TextField, Typography } from "@mui/material";
 import Image from "next/image";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { useState } from "react";
-import { Bubblegum_Sans } from "@next/font/google";
-
-// Import the font
-const bubblegumSans = Bubblegum_Sans({
-  weight: "400",
-  subsets: ["latin"],
-});
+import { Box, Button, TextField, Stack } from "@mui/material";
 
 export default function Home() {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      content: `Hello, I am an Emotional Support Agent willing to help you through difficult times. How may I be of assistance? `,
+      content: `Welome to MYAI, How can I help you today?`,
     },
   ]);
 
@@ -27,12 +21,12 @@ export default function Home() {
       { role: "user", content: message },
       { role: "assistant", content: "" },
     ]);
-    const response = fetch("/api/chat", {
+    const response = await fetch("/api/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify([...messages, { role: "user", content: messages }]),
+      body: JSON.stringify([...messages, { role: "user", content: message }]),
     }).then(async (res) => {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -48,10 +42,7 @@ export default function Home() {
           let otherMessages = messages.slice(0, messages.length - 1);
           return [
             ...otherMessages,
-            {
-              ...lastMessage,
-              content: lastMessage.content + text,
-            },
+            { ...lastMessage, content: lastMessage.content + text },
           ];
         });
         return reader.read().then(processText);
@@ -60,100 +51,120 @@ export default function Home() {
   };
 
   return (
-    <Box
-      width="100vw"
-      height="100vh"
-      display="flex"
-      flexDirection="column"
-      justifyContent="center"
-      alignItems="center"
-      bgcolor="#ffecf2"
-    >
-      <Typography
-        variant="h1"
-        className={bubblegumSans.className}
-        color="#137a63"
-      >
-        Emotional Support Agent
-      </Typography>
-      <Typography
-        variant="h6"
-        className={bubblegumSans.className}
-        color="#137a63"
-      >
-        Disclaimer: I am not paying for the OpenAI API, so this is not a
-        functional chatbot.
-      </Typography>
-      <Typography
-        variant="h6"
-        className={bubblegumSans.className}
-        color="#137a63"
-      >
-        Someone pay me $20 USD so this will be functional :)
-      </Typography>
-      <Stack
-        direction="column"
-        width="600px"
-        height="700px"
-        border="1px solid black"
-        padding={2}
-        spacing={3}
-        borderRadius={5}
-        bgcolor="white"
+    <Box bgcolor="#121212">
+      <Box
+        width="100vw"
+        height="100vh"
+        display="flex"
+        flexDirection="column"
+        justifyContent="center"
+        alignItems="center"
       >
         <Stack
           direction="column"
-          spacing={2}
-          flexGrow={1}
-          overflow="auto"
-          maxHeight="100%"
+          width="600px"
+          height="700px"
+          border="1px solid #333"
+          borderRadius="10px"
+          p={2}
+          spacing={3}
+          bgcolor="#181818"
         >
-          {messages.map((message, index) => (
-            <Box
-              key={index}
-              display="flex"
-              justifyContent={
-                message.role === "assistant" ? "flex-start" : "flex-end"
-              }
-            >
-              <Box
-                bgcolor={
-                  message.role === "assistant" ? "#137a63" : "secondary.main"
-                }
-                color="white"
-                borderRadius={16}
-                p={3}
-                className={bubblegumSans.className}
-              >
-                {message.content}
-              </Box>
-            </Box>
-          ))}
-        </Stack>
-        <Stack direction="row" spacing={2}>
-          <TextField
-            label="Send Message"
-            fullWidth
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            InputProps={{
-              className: bubblegumSans.className,
+          <Stack
+            direction="column"
+            spacing={2}
+            flexGrow={1}
+            overflow="auto"
+            maxHeight="100%"
+            sx={{
+              paddingRight: "10px", // Add padding to the right to create space between the scrollbar and text boxes
+              "&::-webkit-scrollbar": {
+                width: "6px", // Width of the scrollbar
+              },
+              "&::-webkit-scrollbar-thumb": {
+                backgroundColor: "#555", // Color of the scrollbar thumb
+                borderRadius: "16px", // Rounded corners of the scrollbar thumb
+              },
+              "&::-webkit-scrollbar-track": {
+                backgroundColor: "#282828", // Color of the scrollbar track
+              },
             }}
-            InputLabelProps={{
-              className: bubblegumSans.className,
-            }}
-            borderRadius={2}
-          />
-          <Button
-            variant="contained"
-            onClick={sendMessage}
-            color="secondary"
-            className={bubblegumSans.className}
           >
-            Send
-          </Button>
+            {messages.map((message, index) => (
+              <Box
+                key={index}
+                display="flex"
+                justifyContent={
+                  message.role === "assistant" ? "flex-start" : "flex-end"
+                }
+              >
+                <Box
+                  bgcolor={message.role === "assistant" ? "#282828" : "#AF47D2"}
+                  color="#e0e0e0"
+                  borderRadius="7px"
+                  p={2}
+                  border={`1px solid ${
+                    message.role === "assistant" ? "#444" : "#AF47D2"
+                  }`} // Conditional border color
+                >
+                  {message.content}
+                </Box>
+              </Box>
+            ))}
+          </Stack>
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{
+              "& .MuiTextField-root": {
+                "& .MuiInputBase-input": {
+                  color: "#e0e0e0", // Change text color here
+                },
+                "& .MuiInputLabel-root": {
+                  color: "#444", // Change label color here
+                },
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#444", // Change border color here
+                },
+              },
+            }}
+          >
+            <TextField
+              label="Message"
+              fullWidth
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  sendMessage();
+                }
+              }}
+              InputLabelProps={{
+                sx: {
+                  "&.Mui-focused": {
+                    color: "#AF47D2", // Color when the input is focused
+                  },
+                  "&:hover": {
+                    color: "#555", // Color on hover
+                  },
+                },
+              }}
+            />
+            <Button
+              variant="contained"
+              onClick={sendMessage}
+              sx={{
+                backgroundColor: "#AF47D2", // Initial background color
+                "&:hover": {
+                  backgroundColor: "#9242ad", // Background color on hover
+                },
+              }}
+            >
+              Send
+            </Button>
+          </Stack>
         </Stack>
-      </Stack>
+      </Box>
     </Box>
   );
 }
