@@ -1,38 +1,189 @@
-import { NextResponse } from "next/server";
-import OpenAI from "openai";
+"use client";
+import { useState } from "react";
+import { Box, Button, TextField, Stack } from "@mui/material";
 
-export async function POST(req) {
-  // OpenAI library is designed to automatically look for an environment variable named OPENAI_API_KEY if no key is provided in the constructor.
-  const openai = new OpenAI(); // Create a new instance of the OpenAI client
-  const data = await req.json(); // Parse the JSON body of the incoming request
-
-  // Create a chat completion request to the OpenAI API
-  const completion = await openai.chat.completions.create({
-    messages: [{ role: "system", content: systemPrompt }, ...data], // Include the system prompt and user messages
-    model: "gpt-4o-mini", // Specify the model to use
-    stream: true, // Enable streaming responses
-  });
-
-  // Create a ReadableStream to handle the streaming response
-  const stream = new ReadableStream({
-    async start(controller) {
-      const encoder = new TextEncoder(); // Create a TextEncoder to convert strings to Uint8Array
-      try {
-        // Iterate over the streamed chunks of the response
-        for await (const chunk of completion) {
-          const content = chunk.choices[0]?.delta?.content; // Extract the content from the chunk
-          if (content) {
-            const text = encoder.encode(content); // Encode the content to Uint8Array
-            controller.enqueue(text); // Enqueue the encoded text to the stream
-          }
-        }
-      } catch (err) {
-        controller.error(err); // Handle any errors that occur during streaming
-      } finally {
-        controller.close(); // Close the stream when done
-      }
+export default function Home() {
+  const [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      content: "Welcome to MYAI, How can I help you today?",
     },
-  });
+  ]);
 
-  return new NextResponse(stream); // Return the stream as the response
+  const [message, setMessage] = useState("");
+
+  const sendMessage = async () => {
+    if (message.trim() === "") return; // Prevent sending empty messages
+
+    const userMessage = { role: "user", content: message };
+    setMessages((prevMessages) => [...prevMessages, userMessage]);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify([...messages, userMessage]),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let result = "";
+
+      const processText = async ({ done, value }) => {
+        if (done) {
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            { role: "assistant", content: result },
+          ]);
+          return;
+        }
+
+        const text = decoder.decode(value, { stream: true });
+        result += text;
+
+        setMessages((prevMessages) => {
+          const lastMessage = prevMessages[prevMessages.length - 1];
+          if (lastMessage.role === "assistant") {
+            return [
+              ...prevMessages.slice(0, -1),
+              { ...lastMessage, content: lastMessage.content + text },
+            ];
+          } else {
+            return [...prevMessages, { role: "assistant", content: text }];
+          }
+        });
+
+        reader.read().then(processText);
+      };
+
+      reader.read().then(processText);
+    } catch (error) {
+      console.error("Error fetching AI response:", error);
+    }
+  };
+
+  return (
+    <Box bgcolor="#121212">
+      <Box
+        width="100vw"
+        height="100vh"
+        display="flex"
+        flexDirection="column"
+        justifyContent="center"
+        alignItems="center"
+      >
+        <Stack
+          direction="column"
+          width="600px"
+          height="700px"
+          border="1px solid #333"
+          borderRadius="10px"
+          p={2}
+          spacing={3}
+          bgcolor="#181818"
+        >
+          <Stack
+            direction="column"
+            spacing={2}
+            flexGrow={1}
+            overflow="auto"
+            maxHeight="100%"
+            sx={{
+              paddingRight: "10px",
+              "&::-webkit-scrollbar": {
+                width: "6px",
+              },
+              "&::-webkit-scrollbar-thumb": {
+                backgroundColor: "#555",
+                borderRadius: "16px",
+              },
+              "&::-webkit-scrollbar-track": {
+                backgroundColor: "#282828",
+              },
+            }}
+          >
+            {messages.map((message, index) => (
+              <Box
+                key={index}
+                display="flex"
+                justifyContent={
+                  message.role === "assistant" ? "flex-start" : "flex-end"
+                }
+              >
+                <Box
+                  bgcolor={message.role === "assistant" ? "#282828" : "#AF47D2"}
+                  color="#e0e0e0"
+                  borderRadius="7px"
+                  p={2}
+                  border={`1px solid ${
+                    message.role === "assistant" ? "#444" : "#AF47D2"
+                  }`}
+                >
+                  {message.content}
+                </Box>
+              </Box>
+            ))}
+          </Stack>
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{
+              "& .MuiTextField-root": {
+                "& .MuiInputBase-input": {
+                  color: "#e0e0e0",
+                },
+                "& .MuiInputLabel-root": {
+                  color: "#444",
+                },
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#444",
+                },
+              },
+            }}
+          >
+            <TextField
+              label="Message"
+              fullWidth
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  sendMessage();
+                }
+              }}
+              InputLabelProps={{
+                sx: {
+                  "&.Mui-focused": {
+                    color: "#AF47D2",
+                  },
+                  "&:hover": {
+                    color: "#555",
+                  },
+                },
+              }}
+            />
+            <Button
+              variant="contained"
+              onClick={sendMessage}
+              sx={{
+                backgroundColor: "#AF47D2",
+                "&:hover": {
+                  backgroundColor: "#9242ad",
+                },
+              }}
+            >
+              Send
+            </Button>
+          </Stack>
+        </Stack>
+      </Box>
+    </Box>
+  );
 }
