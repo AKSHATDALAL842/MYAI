@@ -13,7 +13,7 @@ export default function Home() {
   const [message, setMessage] = useState("");
 
   const sendMessage = async () => {
-    if (message.trim() === "") return; // Prevent sending empty messages
+    if (message.trim() === "") return;
 
     const userMessage = { role: "user", content: message };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
